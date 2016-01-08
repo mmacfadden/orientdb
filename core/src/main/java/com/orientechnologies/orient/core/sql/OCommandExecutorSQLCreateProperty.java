@@ -48,6 +48,9 @@ public class OCommandExecutorSQLCreateProperty extends OCommandExecutorSQLAbstra
   public static final String KEYWORD_MANDATORY  = "MANDATORY";
   public static final String KEYWORD_NOTNULL    = "NOTNULL";
   public static final String KEYWORD_READONLY   = "READONLY";
+  public static final String KEYWORD_DEFAULT    = "DEFAULT";
+  public static final String KEYWORD_MIN        = "MIN";
+  public static final String KEYWORD_MAX        = "MAX";
 
   private String             className;
   private String             fieldName;
@@ -57,6 +60,9 @@ public class OCommandExecutorSQLCreateProperty extends OCommandExecutorSQLAbstra
   private boolean            mandatory          = false;
   private boolean            readOnly           = false;
   private boolean            notNull            = false;
+  private String             defaultValue       = null;
+  private String             minValue           = null;
+  private String             maxValue           = null;
 
   public OCommandExecutorSQLCreateProperty parse(final OCommandRequest iRequest) {
     init((OCommandRequestText) iRequest);
@@ -153,15 +159,40 @@ public class OCommandExecutorSQLCreateProperty extends OCommandExecutorSQLAbstra
     	  notNull = true;
       } else if (KEYWORD_UNSAFE.equals(keyword)) {
     	  unsafe = true;
+      } else if (KEYWORD_DEFAULT.equals(keyword)) {
+        StringBuilder value = new StringBuilder();
+        pos = parseValue(pos, value);
+        defaultValue = value.toString();
+      } else if (KEYWORD_MIN.equals(keyword)) {
+        StringBuilder value = new StringBuilder();
+        pos = parseValue(pos, value);
+        minValue = value.toString();
+      } else if (KEYWORD_MAX.equals(keyword)) {
+        StringBuilder value = new StringBuilder();
+        pos = parseValue(pos, value);
+        maxValue = value.toString();
       }
       
       return pos;
+  }
+  
+  private int parseValue(int pos, StringBuilder value) {
+    pos = nextWord(parserText, parserTextUpperCase, pos, value, false, " ");
+    
+    String val = value.toString();
+    if (isKeyword(val)) {
+      throw new RuntimeException("");
+    }
+    return pos;
   }
   
   private boolean isKeyword(String text) {
 	  return KEYWORD_MANDATORY.equals(text) ||
 			  KEYWORD_NOTNULL.equals(text) ||
 			  KEYWORD_READONLY.equals(text) ||
+			  KEYWORD_DEFAULT.equals(text) ||
+			  KEYWORD_MIN.equals(text) ||
+			  KEYWORD_MAX.equals(text) ||
 			  KEYWORD_UNSAFE.equals(text);
   }
 
@@ -240,6 +271,9 @@ public class OCommandExecutorSQLCreateProperty extends OCommandExecutorSQLAbstra
     property.setMandatory(mandatory);
     property.setNotNull(notNull);
     property.setReadonly(readOnly);
+    property.setDefaultValue(defaultValue);
+    property.setMin(minValue);
+    property.setMax(maxValue);
     
     return sourceClass.properties().size();
   }
@@ -251,6 +285,6 @@ public class OCommandExecutorSQLCreateProperty extends OCommandExecutorSQLAbstra
 
   @Override
   public String getSyntax() {
-    return "CREATE PROPERTY <class>.<property> <type> [<linked-type>|<linked-class>] [UNSAFE | MANDATORY | READONLY | NOTNULL]";
+    return "CREATE PROPERTY <class>.<property> <type> [<linked-type>|<linked-class>] [UNSAFE | MANDATORY | READONLY | NOTNULL | DEFAULT <default-value> | MIN <min-value> | MAX <max-value>]";
   }
 }

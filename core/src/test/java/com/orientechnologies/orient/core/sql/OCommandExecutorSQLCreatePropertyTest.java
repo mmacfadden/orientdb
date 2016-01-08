@@ -22,6 +22,7 @@ package com.orientechnologies.orient.core.sql;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertTrue;
+import static org.testng.Assert.assertNull;
 
 import org.testng.annotations.Test;
 
@@ -41,7 +42,11 @@ public class OCommandExecutorSQLCreatePropertyTest {
   private static final String PROP_FULL_DIVISION = "company.division";
   private static final String PROP_OFFICERS = "officers";
   private static final String PROP_FULL_OFFICERS= "company.officers";
-
+  private static final String PROP_CREATED = "created";
+  private static final String PROP_FULL_CREATED = "company.created";
+  private static final String PROP_EMPLOYEES = "employees";
+  private static final String PROP_FULL_EMPLOYEES = "company.employees";
+  
   
   @Test
   public void testBasicCreateProperty() throws Exception {
@@ -150,6 +155,174 @@ public class OCommandExecutorSQLCreatePropertyTest {
   } 
   
   @Test
+  public void testCreatePropertyWithDefaultDateValue() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+
+    db.command(new OCommandSQL("CREATE class company")).execute();
+    db.command(new OCommandSQL("CREATE property company.created DATETIME DEFAULT sysdate()")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_CREATED);
+
+    assertEquals(nameProperty.getName(), PROP_CREATED);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_CREATED);
+    assertFalse(nameProperty.isMandatory());
+    assertFalse(nameProperty.isNotNull());
+    assertFalse(nameProperty.isReadonly());
+    assertEquals(nameProperty.getDefaultValue(), "sysdate()");
+    assertNull(nameProperty.getMin());
+    assertNull(nameProperty.getMax());
+
+    db.close();
+  }
+  
+  @Test
+  public void testCreatePropertyWithDefaultStringValue() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+
+    db.command(new OCommandSQL("CREATE class company")).execute();
+    db.command(new OCommandSQL("CREATE property company.name STRING DEFAULT \"no name\"")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_NAME);
+
+    assertEquals(nameProperty.getName(), PROP_NAME);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_NAME);
+    assertFalse(nameProperty.isMandatory());
+    assertFalse(nameProperty.isNotNull());
+    assertFalse(nameProperty.isReadonly());
+    assertEquals(nameProperty.getDefaultValue(), "\"no name\"");
+    assertNull(nameProperty.getMin());
+    assertNull(nameProperty.getMax());
+
+    db.close();
+  }
+  
+  @Test
+  public void testCreatePropertyWithDefaultNumberValue() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+
+    db.command(new OCommandSQL("CREATE class company")).execute();
+    db.command(new OCommandSQL("CREATE property company.employees Integer DEFAULT 0")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_EMPLOYEES);
+
+    assertEquals(nameProperty.getName(), PROP_EMPLOYEES);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_EMPLOYEES);
+    assertFalse(nameProperty.isMandatory());
+    assertFalse(nameProperty.isNotNull());
+    assertFalse(nameProperty.isReadonly());
+    assertEquals(nameProperty.getDefaultValue(), "0");
+    assertNull(nameProperty.getMin());
+    assertNull(nameProperty.getMax());
+
+    db.close();
+  }
+  
+  @Test
+  public void testCreatePropertyWithMinNumber() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+
+    db.command(new OCommandSQL("CREATE class company")).execute();
+    db.command(new OCommandSQL("CREATE property company.employees Integer MIN 0")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_EMPLOYEES);
+
+    assertEquals(nameProperty.getName(), PROP_EMPLOYEES);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_EMPLOYEES);
+    assertFalse(nameProperty.isMandatory());
+    assertFalse(nameProperty.isNotNull());
+    assertFalse(nameProperty.isReadonly());
+    assertNull(nameProperty.getDefaultValue());
+    assertEquals(nameProperty.getMin(), "0");
+    assertNull(nameProperty.getMax());
+
+    db.close();
+  }
+  
+  @Test
+  public void testCreatePropertyWithMinDate() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+
+    db.command(new OCommandSQL("CREATE class company")).execute();
+    db.command(new OCommandSQL("CREATE property company.created DATETIME MIN \"2015-12-31 12:00:00\"")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_CREATED);
+
+    assertEquals(nameProperty.getName(), PROP_CREATED);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_CREATED);
+    assertFalse(nameProperty.isMandatory());
+    assertFalse(nameProperty.isNotNull());
+    assertFalse(nameProperty.isReadonly());
+    assertNull(nameProperty.getDefaultValue());
+    assertEquals(nameProperty.getMin(), "'2015-12-31 12:00:00'");
+    assertNull(nameProperty.getMax());
+
+    db.close();
+  }
+  
+  @Test
+  public void testCreatePropertyWithMaxNumber() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+
+    db.command(new OCommandSQL("CREATE class company")).execute();
+    db.command(new OCommandSQL("CREATE property company.employees Integer MAX 0")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_EMPLOYEES);
+
+    assertEquals(nameProperty.getName(), PROP_EMPLOYEES);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_EMPLOYEES);
+    assertFalse(nameProperty.isMandatory());
+    assertFalse(nameProperty.isNotNull());
+    assertFalse(nameProperty.isReadonly());
+    assertNull(nameProperty.getDefaultValue());
+    assertNull(nameProperty.getMin());
+    assertEquals(nameProperty.getMax(), "0");
+
+    db.close();
+  }
+  
+  @Test
   public void testCreateNotNullProperty() throws Exception {
     final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
       "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
@@ -251,7 +424,36 @@ public class OCommandExecutorSQLCreatePropertyTest {
   }
   
   @Test
-  public void testComplexCreateProperty() throws Exception {
+  public void testComplexCreateNumberProperty() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
+      "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
+    
+    db.create();
+    
+    db.command(new OCommandSQL("CREATE Class company")).execute();
+    db.command(new OCommandSQL("CREATE Property company.employees Integer MANDATORY READONLY DEFAULT 1 MIN 0 MAX 500 NOTNULL UNSAFE")).execute();
+
+    db.commit();
+    db.reload();
+    
+    OClass companyClass = db.getMetadata().getSchema().getClass("company");
+    OProperty nameProperty = companyClass.getProperty(PROP_EMPLOYEES);
+
+    assertEquals(nameProperty.getName(), PROP_EMPLOYEES);
+    assertEquals(nameProperty.getFullName(), PROP_FULL_EMPLOYEES);
+    assertEquals(nameProperty.getType(), OType.INTEGER);
+    assertTrue(nameProperty.isMandatory());
+    assertTrue(nameProperty.isNotNull());
+    assertTrue(nameProperty.isReadonly());
+    assertEquals(nameProperty.getDefaultValue(), "1");
+    assertEquals(nameProperty.getMin(), "0");
+    assertEquals(nameProperty.getMax(), "500");
+
+    db.close();
+  }
+  
+  @Test
+  public void testComplexCreateEmbeddedListProperty() throws Exception {
     final ODatabaseDocumentTx db = new ODatabaseDocumentTx(
       "memory:OCommandExecutorSQLCreatePropertyTest" + System.nanoTime());
     
