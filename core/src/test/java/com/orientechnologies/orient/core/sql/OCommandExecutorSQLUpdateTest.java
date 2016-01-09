@@ -188,6 +188,47 @@ public class OCommandExecutorSQLUpdateTest {
       db.close();
     }
   }
+  
+  @Test
+  public void testUpdateInsert() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx("memory:OCommandExecutorSQLUpdatetestUpdateInsert");
+    db.create();
+    try {
+      db.command(new OCommandSQL("CREATE CLASS test")).execute();
+      db.command(new OCommandSQL("CREATE PROPERTY test.aList EMBEDDEDLIST INTEGER")).execute();
+      db.command(new OCommandSQL("INSERT INTO test CONTENT {aList: [0,2]}")).execute();
+      db.command(new OCommandSQL("UPDATE test INSERT 1 INTO aList AT 1")).execute();
+      List<ODocument> result = db.query(new OSQLSynchQuery<ODocument>("SELECT FROM test"));
+      ODocument doc = result.get(0);
+      List<Integer> aList = doc.field("aList");
+      assertEquals(aList.size(), 3);
+      assertEquals(aList.get(0), new Integer(0));
+      assertEquals(aList.get(1), new Integer(1));
+      assertEquals(aList.get(2), new Integer(2));
+    } finally {
+      db.close();
+    }
+  }
+  
+  @Test
+  public void testUpdateDelete() throws Exception {
+    final ODatabaseDocumentTx db = new ODatabaseDocumentTx("memory:OCommandExecutorSQLUpdatetestUpdateDelete");
+    db.create();
+    try {
+      db.command(new OCommandSQL("CREATE CLASS test")).execute();
+      db.command(new OCommandSQL("CREATE PROPERTY test.aList EMBEDDEDLIST INTEGER")).execute();
+      db.command(new OCommandSQL("INSERT INTO test CONTENT {aList: [0, 1, 2]}")).execute();
+      db.command(new OCommandSQL("UPDATE test DELETE FROM aList AT 1")).execute();
+      List<ODocument> result = db.query(new OSQLSynchQuery<ODocument>("SELECT FROM test"));
+      ODocument doc = result.get(0);
+      List<Integer> aList = doc.field("aList");
+      assertEquals(aList.size(), 2);
+      assertEquals(aList.get(0), new Integer(0));
+      assertEquals(aList.get(1), new Integer(2));
+    } finally {
+      db.close();
+    }
+  }
 
 
   @Test

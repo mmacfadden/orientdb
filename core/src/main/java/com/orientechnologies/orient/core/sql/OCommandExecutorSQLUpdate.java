@@ -60,34 +60,38 @@ import java.util.*;
  */
 public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract implements OCommandDistributedReplicateRequest,
     OCommandResultListener {
-  public static final String                    KEYWORD_UPDATE    = "UPDATE";
-  private static final String                   KEYWORD_ADD       = "ADD";
-  private static final String                   KEYWORD_PUT       = "PUT";
-  private static final String                   KEYWORD_REMOVE    = "REMOVE";
-  private static final String                   KEYWORD_INCREMENT = "INCREMENT";
-  private static final String                   KEYWORD_MERGE     = "MERGE";
-  private static final String                   KEYWORD_UPSERT    = "UPSERT";
-  private static final String                   KEYWORD_EDGE      = "EDGE";
-  private static final Object                   EMPTY_VALUE       = new Object();
-  private List<OPair<String, Object>>           setEntries        = new ArrayList<OPair<String, Object>>();
-  private List<OPair<String, Object>>           addEntries        = new ArrayList<OPair<String, Object>>();
-  private List<OTriple<String, String, Object>> putEntries        = new ArrayList<OTriple<String, String, Object>>();
-  private List<OPair<String, Object>>           removeEntries     = new ArrayList<OPair<String, Object>>();
-  private List<OPair<String, Object>>           incrementEntries  = new ArrayList<OPair<String, Object>>();
-  private ODocument                             merge             = null;
-  private String                                lockStrategy      = "NONE";
-  private OReturnHandler                        returnHandler     = new ORecordCountHandler();
-  private OQuery<?>                             query;
-  private OSQLFilter                            compiledFilter;
-  private String                                subjectName;
-  private OCommandParameters                    parameters;
-  private boolean                               upsertMode        = false;
-  private boolean                               isUpsertAllowed   = false;
-  private boolean                               updated           = false;
-  private OClass                                clazz             = null;
-  private DISTRIBUTED_EXECUTION_MODE            distributedMode;
+  public static final String                     KEYWORD_UPDATE    = "UPDATE";
+  private static final String                    KEYWORD_ADD       = "ADD";
+  private static final String                    KEYWORD_PUT       = "PUT";
+  private static final String                    KEYWORD_REMOVE    = "REMOVE";
+  private static final String                    KEYWORD_INCREMENT = "INCREMENT";
+  private static final String                    KEYWORD_MERGE     = "MERGE";
+  private static final String                    KEYWORD_UPSERT    = "UPSERT";
+  private static final String                    KEYWORD_EDGE      = "EDGE";
+  private static final String                    KEYWORD_INSERT    = "INSERT";
+  private static final String                    KEYWORD_DELETE    = "DELETE";
+  private static final Object                    EMPTY_VALUE       = new Object();
+  private List<OPair<String, Object>>            setEntries        = new ArrayList<OPair<String, Object>>();
+  private List<OPair<String, Object>>            addEntries        = new ArrayList<OPair<String, Object>>();
+  private List<OTriple<String, String, Object>>  putEntries        = new ArrayList<OTriple<String, String, Object>>();
+  private List<OPair<String, Object>>            removeEntries     = new ArrayList<OPair<String, Object>>();
+  private List<OPair<String, Object>>            incrementEntries  = new ArrayList<OPair<String, Object>>();
+  private List<OTriple<String, Integer, Object>> insertEntries     = new ArrayList<OTriple<String, Integer, Object>>();
+  private List<OPair<String, Integer>>           deleteEntries     = new ArrayList<OPair<String, Integer>>();
+  private ODocument                              merge             = null;
+  private String                                 lockStrategy      = "NONE";
+  private OReturnHandler                         returnHandler     = new ORecordCountHandler();
+  private OQuery<?>                              query;
+  private OSQLFilter                             compiledFilter;
+  private String                                 subjectName;
+  private OCommandParameters                     parameters;
+  private boolean                                upsertMode        = false;
+  private boolean                                isUpsertAllowed   = false;
+  private boolean                                updated           = false;
+  private OClass                                 clazz             = null;
+  private DISTRIBUTED_EXECUTION_MODE             distributedMode;
 
-  private boolean                               updateEdge        = false;
+  private boolean                                updateEdge        = false;
 
   @SuppressWarnings("unchecked")
   public OCommandExecutorSQLUpdate parse(final OCommandRequest iRequest) {
@@ -111,6 +115,8 @@ public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract 
       putEntries.clear();
       removeEntries.clear();
       incrementEntries.clear();
+      insertEntries.clear();
+      deleteEntries.clear();
       content = null;
       merge = null;
 
@@ -133,6 +139,7 @@ public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract 
 
       if (parserIsEnded()
           || (!word.equals(KEYWORD_SET) && !word.equals(KEYWORD_ADD) && !word.equals(KEYWORD_PUT) && !word.equals(KEYWORD_REMOVE)
+              && !word.equals(KEYWORD_DELETE) && !word.equals(KEYWORD_INSERT)
               && !word.equals(KEYWORD_INCREMENT) && !word.equals(KEYWORD_CONTENT) && !word.equals(KEYWORD_MERGE)
               && !word.equals(KEYWORD_LOCK) && !word.equals(KEYWORD_RETURN) && !word.equals(KEYWORD_UPSERT) && !word.equals(KEYWORD_EDGE)))
         throwSyntaxErrorException("Expected keyword " + KEYWORD_SET + "," + KEYWORD_ADD + "," + KEYWORD_CONTENT + ","
@@ -157,6 +164,10 @@ public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract 
           parseRemoveFields();
         else if (word.equals(KEYWORD_INCREMENT))
           parseIncrementFields();
+        else if (word.equals(KEYWORD_INSERT))
+          parseInsertFields();
+        else if (word.equals(KEYWORD_DELETE))
+          parseDeleteFields();
         else if (word.equals(KEYWORD_LOCK))
           lockStrategy = parseLock();
         else if (word.equals(KEYWORD_UPSERT))
@@ -300,6 +311,8 @@ public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract 
     updated |= handleAddEntries(record);
     updated |= handlePutEntries(record);
     updated |= handleRemoveEntries(record);
+    updated |= handleInsertEntries(record);
+    updated |= handleDeleteEntries(record);
 
     if (updated) {
       handleUpdateEdge(record);
@@ -673,6 +686,46 @@ public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract 
     }
     return updated;
   }
+  
+  private boolean handleInsertEntries(ODocument record) {
+    boolean updated = false;
+    Object fieldValue;
+    for (OTriple<String, Integer, Object> entry : insertEntries) {
+      List<Object> list = null;
+
+      fieldValue = record.field(entry.getKey());
+
+      if (fieldValue instanceof List<?>)
+        list = (List<Object>) fieldValue;
+      else
+        continue;
+
+      final Object value = extractValue(record, new OPair<String, Object>(entry.getKey(), entry.getValue().getValue()));
+
+      list.add(entry.getValue().getKey(), value);
+      updated = true;
+    }
+    return updated;
+  }
+
+  private boolean handleDeleteEntries(ODocument record) {
+    boolean updated = false;
+    Object fieldValue;
+    for (OPair<String, Integer> entry : deleteEntries) {
+      List<Object> list = null;
+
+      fieldValue = record.field(entry.getKey());
+
+      if (fieldValue instanceof List<?>)
+        list = (List<Object>) fieldValue;
+      else
+        continue;
+
+      list.remove(entry.getValue());
+      updated = true;
+    }
+    return updated;
+  }
 
   private boolean handleRemoveEntries(ODocument record) {
     boolean updated = false;
@@ -854,6 +907,68 @@ public class OCommandExecutorSQLUpdate extends OCommandExecutorSQLRetryAbstract 
 
     if (incrementEntries.size() == 0)
       throwSyntaxErrorException("Entries to increment <field> = <value> are missed. Example: salary = -100");
+  }
+  
+  private void parseInsertFields() {
+    String fieldName;
+    String fieldValue;
+
+    boolean firstLap = true;
+    while (!parserIsEnded() && (firstLap || parserGetLastSeparator() == ',' || parserGetCurrentChar() == ',')
+        && !parserGetLastWord().equals(KEYWORD_WHERE)) {
+
+      parserRequiredKeyword(KEYWORD_INTO);
+      fieldName = parserRequiredWord(false, "Field name expected");
+      parserRequiredKeyword(KEYWORD_AT);
+      String indexString = parserRequiredWord(false, "index expected", " \r\n");
+
+      int index = -1;
+      try {
+        index = Integer.parseInt(indexString);
+      } catch (NumberFormatException e) {
+        throwParsingException("List indices must be integers.", e);
+      }
+
+      fieldValue = parserRequiredWord(false, "Value expected", " =><,\r\n");
+
+      final Object v = convertValue(clazz, fieldName, getFieldValueCountingParameters(fieldValue));
+
+      // INSERT TRANSFORMED FIELD VALUE
+      insertEntries.add(new OTriple<String, Integer, Object>(fieldName, index, v));
+      parserSkipWhiteSpaces();
+
+      firstLap = false;
+    }
+
+    if (insertEntries.size() == 0)
+      throwSyntaxErrorException("Entries to insert into <field> at <index> <value> are missed.");
+  }
+
+  private void parseDeleteFields() {
+    String fieldName;
+
+    boolean firstLap = true;
+    while (!parserIsEnded() && (firstLap || parserGetLastSeparator() == ',' || parserGetCurrentChar() == ',')
+        && !parserGetLastWord().equals(KEYWORD_WHERE)) {
+
+      parserRequiredKeyword(KEYWORD_FROM);
+      fieldName = parserRequiredWord(false, "Field name expected");
+      parserRequiredKeyword(KEYWORD_AT);
+      String indexString = parserRequiredWord(false, "index expected", " \r\n");
+
+      int index = -1;
+      try {
+        index = Integer.parseInt(indexString);
+      } catch (NumberFormatException e) {
+        throwParsingException("List indices must be integers.", e);
+      }
+
+      deleteEntries.add(new OPair<String, Integer>(fieldName, index));
+      parserSkipWhiteSpaces();
+    }
+
+    if (deleteEntries.size() == 0)
+      throwSyntaxErrorException("Entries to delete from <field> at <index> are missed.");
   }
 
   @Override

@@ -50,6 +50,8 @@ public abstract class OCommandExecutorSQLAbstract extends OCommandExecutorAbstra
 
   public static final String KEYWORD_FROM             = "FROM";
   public static final String KEYWORD_LET              = "LET";
+  public static final String KEYWORD_AT               = "AT";
+  public static final String KEYWORD_INTO             = "INTO";
   public static final String KEYWORD_WHERE            = "WHERE";
   public static final String KEYWORD_LIMIT            = "LIMIT";
   public static final String KEYWORD_SKIP             = "SKIP";

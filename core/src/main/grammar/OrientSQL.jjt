@@ -172,6 +172,8 @@ TOKEN:
 	|
 	< AS: ( "a" | "A" ) ( "s" | "S" ) >
 	|
+	< AT: ( "a" | "A" ) ( "t" | "T" ) >
+	|
 	< DESC: ( "d" | "D" ) ( "e" | "E" ) ( "s" | "S" ) ( "c" | "C" ) >
 	|
 	< FETCHPLAN: ( "f" | "F" ) ( "e" | "E" ) ( "t" | "T" ) ( "c" | "C" ) ( "h" | "H" ) ( "p" | "P" ) ( "l" | "L" ) ( "a" | "A" ) ( "n" | "N" ) >
@@ -357,7 +359,7 @@ TOKEN :
 | < SEMICOLON: ";" >
 | < COMMA: "," >
 | < DOT: "." >
-| < AT: "@" >
+| < ATSYMBOL: "@" >
 | < DOLLAR: "$" >
 | < BACKTICK: "`" >
 }
@@ -1287,6 +1289,8 @@ OUpdateOperations UpdateOperations():
     OUpdatePutItem lastPutItem;
     OUpdateIncrementItem lastIncrementItem;
     OUpdateRemoveItem lastRemoveItem;
+    OUpdateInsertItem lastInsertItem;
+    OUpdateDeleteItem lastDeleteItem;
 }
 {
     (
@@ -1334,6 +1338,16 @@ OUpdateOperations UpdateOperations():
                 <COMMA>
                 lastRemoveItem = UpdateRemoveItem()  { jjtThis.updateRemoveItems.add(lastRemoveItem); }
             )*
+         )
+         |
+         (
+            <INSERT> { jjtThis.type = OUpdateOperations.TYPE_INSERT; }
+            lastInsertItem = UpdateInsertItem()  { jjtThis.updateInsertItems.add(lastInsertItem); }
+         )
+         |
+         (
+            <DELETE> { jjtThis.type = OUpdateOperations.TYPE_DELETE; }
+            lastDeleteItem = UpdateDeleteItem()  { jjtThis.updateDeleteItems.add(lastDeleteItem); }
          )
     )
     { return jjtThis; }
@@ -1402,6 +1416,40 @@ OUpdateAddItem UpdateAddItem():
     { return jjtThis; }
 }
 
+OUpdateInsertItem UpdateInsertItem():
+{
+  Token indexToken;
+}
+{
+    (
+    	jjtThis.value = Expression()
+    	<INTO>
+    	jjtThis.field = Identifier()
+    	<AT>
+    	(indexToken = <INTEGER_LITERAL>)
+    )
+    { 
+      jjtThis.index = Integer.parseInt(indexToken.image);
+      return jjtThis; 
+    }
+}
+
+OUpdateDeleteItem UpdateDeleteItem():
+{
+  Token indexToken;
+}
+{
+    (
+    	<FROM>
+    	jjtThis.field = Identifier()
+    	<AT>
+    	(indexToken = <INTEGER_LITERAL>)
+    )
+    { 
+      jjtThis.index = Integer.parseInt(indexToken.image);
+      return jjtThis; 
+    }
+}
 
 OInsertStatement InsertStatement():
 {}

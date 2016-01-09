@@ -14,6 +14,8 @@ public class OUpdateOperations extends SimpleNode {
   protected static final int           TYPE_INCREMENT       = 4;
   protected static final int           TYPE_ADD             = 5;
   protected static final int           TYPE_REMOVE          = 6;
+  protected static final int           TYPE_INSERT          = 7;
+  protected static final int           TYPE_DELETE          = 8;
 
   protected int                        type;
 
@@ -24,6 +26,10 @@ public class OUpdateOperations extends SimpleNode {
   protected OJson                      json;
 
   protected List<OUpdateIncrementItem> updateIncrementItems = new ArrayList<OUpdateIncrementItem>();
+  
+  protected List<OUpdateInsertItem>    updateInsertItems    = new ArrayList<OUpdateInsertItem>();
+  
+  protected List<OUpdateDeleteItem>    updateDeleteItems    = new ArrayList<OUpdateDeleteItem>();
 
   protected List<OUpdateRemoveItem>    updateRemoveItems    = new ArrayList<OUpdateRemoveItem>();
 
@@ -101,9 +107,27 @@ public class OUpdateOperations extends SimpleNode {
         first = false;
       }
       break;
-
+    case TYPE_INSERT:
+      builder.append("INSERT ");
+      for (OUpdateInsertItem item : this.updateInsertItems) {
+        if (!first) {
+          builder.append(", ");
+        }
+        item.toString(params, builder);
+        first = false;
+      }
+      break;
+    case TYPE_DELETE:
+      builder.append("DELETE ");
+      for (OUpdateDeleteItem item : this.updateDeleteItems) {
+        if (!first) {
+          builder.append(", ");
+        }
+        item.toString(params, builder);
+        first = false;
+      }
+      break;
     }
   }
-
 }
 /* JavaCC - OriginalChecksum=0eca3b3e4e3d96c42db57b7cd89cf755 (do not edit this line) */
